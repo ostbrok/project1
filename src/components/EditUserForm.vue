@@ -2,23 +2,21 @@
 import { useUsersStore } from '../stores/users'
 import { UserRoleEnum, type IUser } from '../models/user.model';
 import { inject, ref, type Ref, toRef } from 'vue';
-import { ref as fbref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { storage } from '@/firebase'
+import { useUploadUserImage } from '@/composables/firebase/uploadUserImage';
 
 const showEditUserModal = <Ref>inject('showEditUserModal');
 const isLoading = ref(false);
 
 const props = defineProps<{
-    editUserId: number
+    editUserDocId: string
 }>()
-const editUserId = toRef(props.editUserId)
+const editUserDocId = toRef(props.editUserDocId)
 
 const usersStore = useUsersStore()
-const user = ref(<IUser>usersStore.user(editUserId.value));
+const user = ref(<IUser>usersStore.user(editUserDocId.value));
 
 const imageInput = ref<HTMLInputElement | null>(null);
 const imageFile = ref<File | null>(null);
-const imageUrl = ref(user.value.image);
 
 const handleImageInput = () => {
     if (imageInput.value?.files && imageInput.value.files.length > 0) {
@@ -29,11 +27,9 @@ const handleImageInput = () => {
 const updateUser = async () => {
     isLoading.value = true
     if (imageFile.value) {
-        const storageRef = fbref(storage, `userImages/${(Math.random() + 1).toString(36).substring(2)}.png`);
-        await uploadBytes(storageRef, new Blob([imageFile.value], { type: 'image/png' }));
-        imageUrl.value = await getDownloadURL(storageRef);
+        user.value.image = await useUploadUserImage(imageFile.value) as string
     }
-    const newUserData: IUser = { ...user.value, image: imageUrl.value };
+    const newUserData: IUser = { ...user.value };
     usersStore.updateUser(newUserData)
     showEditUserModal.value = false
     isLoading.value = false

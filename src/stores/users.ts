@@ -1,7 +1,9 @@
 import type { IUser } from '@/models/user.model'
 import { defineStore } from 'pinia'
-import { db } from '@/firebase';
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { useAddUser } from '@/composables/firebase/addUser';
+import { useFetchUsers } from '@/composables/firebase/fetchUsers';
+import { useUpdateUser } from '@/composables/firebase/updateUser';
+import { useDeleteUser } from '@/composables/firebase/deleteUser';
 
 export const useUsersStore = defineStore('users', {
     state: () => ({
@@ -10,51 +12,25 @@ export const useUsersStore = defineStore('users', {
     }),
     actions: {
         async fetchUsers() {
-            try {
-                const snapshot = await getDocs(collection(db, 'users'))
-                this.users = snapshot.docs.map((doc) => ({ ...doc.data(), docId: doc.id })) as IUser[];
-            } catch (error) {
-                console.error('Error fetching users:', error);
-            }
+            this.users = await useFetchUsers() as IUser[]
         },
-        async addUser(user: IUser) {
-            try {
-                const docRef = await addDoc(collection(db, "users"), user)
-                this.users.push({ ...user, docId: docRef.id });
-            } catch (error) {
-                console.error('Error adding user:', error);
-            }
+        async addUser(userData: IUser) {
+            this.users.push(await useAddUser(userData) as IUser)
         },
-        async updateUser(data: IUser) {
-            try {
-                const index = this.users.findIndex(user => user.id === data.id);
-                if (index !== -1) {
-                    const documentRef = await doc(db, 'users', this.users[index].docId);
-                    this.users[index] = data
-                    await updateDoc(documentRef, { ...data })
-                }
-            } catch (error) {
-                console.error('Error updating user:', error);
-            }
-            const index = this.users.findIndex(user => user.id === data.id);
-            this.users[index] = data
+        async updateUser(userData: IUser) {
+            userData = await useUpdateUser(userData) as IUser
+            const index = this.users.findIndex(user => user.docId === userData.docId);
+            this.users[index] = userData
         },
-        async removeUser(id: number) {
-            try {
-                const index = this.users.findIndex(user => user.id === id);
-                if (index !== -1) {
-                    const documentRef = await doc(db, 'users', this.users[index].docId);
-                    this.users.splice(index, 1)
-                    await deleteDoc(documentRef)
-                }
-            } catch (error) {
-                console.error('Error deleting user:', error);
-            }
+        async deleteUser(userDocId: string) {
+            await useDeleteUser(userDocId)
+            const index = this.users.findIndex(user => user.docId === userDocId);
+            this.users.splice(index, 1)
         },
     },
     getters: {
         user: (state) => {
-            return (id: number) => state.users.find((user) => user.id === id)
+            return (userDocId: string) => state.users.find((user) => user.docId === userDocId)
         },
         nextId: (state) => {
             return state.users.length + 1

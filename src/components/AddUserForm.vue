@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { useUsersStore } from '../stores/users'
 import { UserRoleEnum, type IUser } from '../models/user.model';
-import { ref as fbref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { storage } from '@/firebase'
 import { inject, ref, type Ref } from 'vue';
-
+import { useUploadUserImage } from '@/composables/firebase/uploadUserImage';
 
 const showAddUserModal = <Ref>inject('showAddUserModal');
 const isLoading = ref(false);
@@ -13,12 +11,6 @@ const usersStore = useUsersStore()
 
 const imageInput = ref<HTMLInputElement | null>(null);
 const imageFile = ref<File | null>(null);
-const imageUrl = ref('https://placehold.co/300');
-const handleImageInput = () => {
-    if (imageInput.value?.files && imageInput.value.files.length > 0) {
-        imageFile.value = imageInput.value.files[0];
-    }
-}
 
 const user = ref<IUser>({
     docId: '',
@@ -26,17 +18,22 @@ const user = ref<IUser>({
     firstname: '',
     lastname: '',
     phoneNumber: '',
-    image: imageUrl.value,
+    image: 'https://placehold.co/300',
     role: UserRoleEnum.NOT_SELECTED
 });
+
+const handleImageInput = () => {
+    if (imageInput.value?.files && imageInput.value.files.length > 0) {
+        imageFile.value = imageInput.value.files[0];
+    }
+}
+
 const addUser = async () => {
     isLoading.value = true
     if (imageFile.value) {
-        const storageRef = fbref(storage, `userImages/${(Math.random() + 1).toString(36).substring(2)}.png`);
-        await uploadBytes(storageRef, new Blob([imageFile.value], { type: 'image/png' }));
-        imageUrl.value = await getDownloadURL(storageRef);
+        user.value.image = await useUploadUserImage(imageFile.value) as string
     }
-    const newUserData: IUser = { ...user.value, id: usersStore.nextId, image: imageUrl.value };
+    const newUserData: IUser = { ...user.value, id: usersStore.nextId };
     usersStore.addUser(newUserData)
     showAddUserModal.value = false
     isLoading.value = false
