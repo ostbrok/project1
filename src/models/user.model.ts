@@ -1,5 +1,4 @@
 export enum UserRoleEnum {
-    'NOT_SELECTED' = 'Не выбрана',
     'BOSS' = 'Начальник',
     'EMPLOYEE' = 'Работник'
 }

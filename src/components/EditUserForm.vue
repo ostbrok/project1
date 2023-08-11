@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { useUsersStore } from '../stores/users'
 import { UserRoleEnum, type IUser } from '../models/user.model';
-import { inject, ref, type Ref, toRef } from 'vue';
+import { ref, type Ref, inject } from 'vue';
 import { useUploadUserImage } from '@/composables/firebase/uploadUserImage';
 
-const showEditUserModal = <Ref>inject('showEditUserModal');
+const userDocId = <Ref>inject('userDocId');
+
 const isLoading = ref(false);
 
-const props = defineProps<{
-    editUserDocId: string
-}>()
-const editUserDocId = toRef(props.editUserDocId)
+const emit = defineEmits(['closeModal'])
 
 const usersStore = useUsersStore()
-const user = ref(<IUser>usersStore.user(editUserDocId.value));
+const user = ref(<IUser>usersStore.user(userDocId.value));
 
 const imageInput = ref<HTMLInputElement | null>(null);
 const imageFile = ref<File | null>(null);
@@ -30,9 +28,9 @@ const updateUser = async () => {
         user.value.image = await useUploadUserImage(imageFile.value) as string
     }
     const newUserData: IUser = { ...user.value };
-    usersStore.updateUser(newUserData)
-    showEditUserModal.value = false
+    await usersStore.updateUser(newUserData)
     isLoading.value = false
+    emit('closeModal')
 }
 </script>
 

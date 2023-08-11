@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useUsersStore } from '../stores/users'
 import { UserRoleEnum, type IUser } from '../models/user.model';
-import { inject, ref, type Ref } from 'vue';
+import { ref } from 'vue';
 import { useUploadUserImage } from '@/composables/firebase/uploadUserImage';
 
-const showAddUserModal = <Ref>inject('showAddUserModal');
 const isLoading = ref(false);
+
+const emit = defineEmits(['closeModal'])
 
 const usersStore = useUsersStore()
 
@@ -19,7 +20,7 @@ const user = ref<IUser>({
     lastname: '',
     phoneNumber: '',
     image: 'https://placehold.co/300',
-    role: UserRoleEnum.NOT_SELECTED
+    role: UserRoleEnum.BOSS
 });
 
 const handleImageInput = () => {
@@ -34,9 +35,9 @@ const addUser = async () => {
         user.value.image = await useUploadUserImage(imageFile.value) as string
     }
     const newUserData: IUser = { ...user.value, id: usersStore.nextId };
-    usersStore.addUser(newUserData)
-    showAddUserModal.value = false
+    await usersStore.addUser(newUserData)
     isLoading.value = false
+    emit('closeModal')
 }
 </script>
 
@@ -49,7 +50,7 @@ const addUser = async () => {
         <input type="file" ref="imageInput" @change="handleImageInput" class="w-full border py-1 px-2"
             placeholder="Изображение" />
         <select v-model="user.role" class="w-full border py-1 px-2" required>
-            <option v-for="role in UserRoleEnum" :value="role" :disabled="role == UserRoleEnum.NOT_SELECTED">{{ role }}
+            <option v-for="role in UserRoleEnum" :value="role" :disabled="role == UserRoleEnum.BOSS">{{ role }}
             </option>
         </select>
         <input type="number" v-show="user.role == UserRoleEnum.BOSS" :required="user.role == UserRoleEnum.BOSS"
